@@ -253,23 +253,31 @@ export default function ConsolidadoProfissionalClient({
 
         let imported = 0
         const CHUNK_SIZE = 100
+        let lastError = null
         for (let i = 0; i < payloads.length; i += CHUNK_SIZE) {
           const chunk = payloads.slice(i, i + CHUNK_SIZE)
           const { error } = await supabase.from('consolidado_profissional').insert(chunk)
-          if (!error) imported += chunk.length
+          if (!error) {
+            imported += chunk.length
+          } else {
+            console.error('Erro no chunk', i, error)
+            lastError = error
+          }
         }
 
         const selectQ = '*, estabelecimento:estabelecimentos(nome, id), especialidade:especialidades(nome, id), profissional:profissionais(nome, id), procedimento:procedimentos(nome, id)'
         const { data: refreshed } = await supabase.from('consolidado_profissional').select(selectQ).order('created_at', { ascending: false })
         if (refreshed) setRecords(refreshed as ConsolidadoProfissional[])
         
-        if (skipped > 0) {
+        if (lastError) {
+          toast(`Erro na importação: ${lastError.message || JSON.stringify(lastError)}`, 'error')
+        } else if (skipped > 0) {
           toast(`${imported} importados. ${skipped} ignorados (nomes não encontrados).`, 'error')
         } else {
           toast(`${imported} registros importados com sucesso!`, 'success')
         }
-      } catch {
-        toast('Erro ao importar arquivo.', 'error')
+      } catch (err: any) {
+        toast(`Erro interno ao importar arquivo. ${err.message}`, 'error')
       } finally {
         setIsImporting(false)
       }
