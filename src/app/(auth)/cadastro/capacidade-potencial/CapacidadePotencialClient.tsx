@@ -177,7 +177,7 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
     setSelectedIds(new Set())
     
     if (errors.length > 0) {
-      toast(`${ids.length - errors.length} excluídos. ${errors.length} falharam.`, 'warning')
+      toast(`${ids.length - errors.length} excluídos. ${errors.length} falharam.`, 'error')
     } else {
       toast(`${ids.length} registros excluídos.`, 'success')
     }
