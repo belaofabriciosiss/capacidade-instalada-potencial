@@ -44,6 +44,9 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
   const [deleteTarget, setDeleteTarget] = useState<CapacidadePotencial | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
 
   const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -69,6 +72,24 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   useEffect(() => { setPage(1) }, [search, filterEstab, filterTipo])
+
+  const isAllPageSelected = paginated.length > 0 && paginated.every(r => selectedIds.has(r.id))
+  const toggleSelectAll = () => {
+    const next = new Set(selectedIds)
+    if (isAllPageSelected) {
+      paginated.forEach(r => next.delete(r.id))
+    } else {
+      paginated.forEach(r => next.add(r.id))
+    }
+    setSelectedIds(next)
+  }
+
+  const toggleSelect = (id: string) => {
+    const next = new Set(selectedIds)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setSelectedIds(next)
+  }
 
   const openCreate = () => {
     setEditRecord(null)
@@ -129,9 +150,23 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
     const { error } = await supabase.from('capacidade_potencial').delete().eq('id', deleteTarget.id)
     if (error) { toast('Erro ao excluir registro.', 'error'); setDeleting(false); return }
     setRecords(prev => prev.filter(r => r.id !== deleteTarget.id))
+    setSelectedIds(prev => { const n = new Set(prev); n.delete(deleteTarget.id); return n })
     toast('Registro excluído.', 'success')
     setDeleting(false)
     setDeleteTarget(null)
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return
+    setBulkDeleting(true)
+    const ids = Array.from(selectedIds)
+    const { error } = await supabase.from('capacidade_potencial').delete().in('id', ids)
+    if (error) { toast('Erro ao excluir registros selecionados.', 'error'); setBulkDeleting(false); return }
+    setRecords(prev => prev.filter(r => !selectedIds.has(r.id)))
+    setSelectedIds(new Set())
+    toast(`${ids.length} registros excluídos.`, 'success')
+    setBulkDeleting(false)
+    setShowBulkDeleteModal(false)
   }
 
   // Export
@@ -218,6 +253,11 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
           <p className="page-subtitle">Cadastro de capacidade potencial por estabelecimento e tipo de sala</p>
         </div>
         <div className="page-actions">
+          {selectedIds.size > 0 && (
+            <button className="btn btn-danger btn-sm" onClick={() => setShowBulkDeleteModal(true)}>
+              <Trash2 size={14} /> Excluir ({selectedIds.size})
+            </button>
+          )}
           <button className="btn btn-secondary btn-sm" onClick={handleTemplate}>
             <Download size={14} /> Template
           </button>
@@ -261,6 +301,9 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
           <table className="data-table">
             <thead>
               <tr>
+                <th style={{ width: 40, textAlign: 'center' }}>
+                  <input type="checkbox" className="form-checkbox" checked={isAllPageSelected} onChange={toggleSelectAll} />
+                </th>
                 <th>Estabelecimento</th>
                 <th>Tipo de Sala</th>
                 <th>Total Salas</th>
@@ -273,7 +316,7 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
             <tbody>
               {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={7}>
+                  <td colSpan={8}>
                     <div className="empty-state">
                       <p style={{ color: 'var(--text-muted)' }}>Nenhum registro encontrado</p>
                     </div>
@@ -281,6 +324,9 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
                 </tr>
               ) : paginated.map(r => (
                 <tr key={r.id}>
+                  <td style={{ textAlign: 'center' }}>
+                    <input type="checkbox" className="form-checkbox" checked={selectedIds.has(r.id)} onChange={() => toggleSelect(r.id)} />
+                  </td>
                   <td><strong>{r.estabelecimento?.nome || '-'}</strong></td>
                   <td><span className="badge badge-brand">{r.tipo_sala}</span></td>
                   <td>{r.total_salas}</td>
@@ -404,6 +450,16 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
         onCancel={() => setDeleteTarget(null)}
         loading={deleting}
         confirmLabel="Excluir"
+      />
+
+      <ConfirmModal
+        isOpen={showBulkDeleteModal}
+        title="Excluir Registros"
+        message={`Tem certeza que deseja excluir ${selectedIds.size} registro(s) selecionado(s)? Esta ação não pode ser desfeita.`}
+        onConfirm={handleBulkDelete}
+        onCancel={() => setShowBulkDeleteModal(false)}
+        loading={bulkDeleting}
+        confirmLabel="Excluir Todos"
       />
     </>
   )
