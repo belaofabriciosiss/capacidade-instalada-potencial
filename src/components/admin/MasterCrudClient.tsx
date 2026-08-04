@@ -134,7 +134,7 @@ export default function MasterCrudClient({ tableName, label, labelPlural, initia
         } else if (duplicated > 0) {
           toast(`Nenhum registro novo. ${duplicated} já existiam.`, 'info')
         } else {
-          toast('Nenhum dado válido encontrado na planilha.', 'warn')
+          toast('Nenhum dado válido encontrado na planilha.', 'warning')
         }
       } catch (err) {
         toast('Erro ao importar arquivo.', 'error')
