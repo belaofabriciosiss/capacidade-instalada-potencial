@@ -225,7 +225,7 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
         const ws = wb.Sheets[wb.SheetNames[0]]
         const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws)
 
-        let imported = 0
+        const payloads = []
         for (const row of rows) {
           const estab = estabelecimentos.find(e => e.nome === row['Estabelecimento'])
           if (!estab) continue
@@ -236,15 +236,21 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
             return isNaN(num) ? fallback : num
           }
 
-          const payload = {
+          payloads.push({
             estabelecimento_id: estab.id,
             tipo_sala: String(row['Tipo de Sala'] || 'Consultas'),
             total_salas: getNum(row['Total de Salas'], 1),
             horas_dia: getNum(row['Horas/Dia'], 8),
             pacientes_hora: getNum(row['Pacientes/Hora'], 2),
-          }
-          await supabase.from('capacidade_potencial').insert(payload)
-          imported++
+          })
+        }
+
+        let imported = 0
+        const CHUNK_SIZE = 100
+        for (let i = 0; i < payloads.length; i += CHUNK_SIZE) {
+          const chunk = payloads.slice(i, i + CHUNK_SIZE)
+          const { error } = await supabase.from('capacidade_potencial').insert(chunk)
+          if (!error) imported += chunk.length
         }
 
         // Reload

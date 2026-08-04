@@ -215,7 +215,7 @@ export default function ConsolidadoProfissionalClient({
         const ws = wb.Sheets[wb.SheetNames[0]]
         const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws)
 
-        let imported = 0
+        const payloads = []
         for (const row of rows) {
           const estab = estabelecimentos.find(e => e.nome === row['Estabelecimento'])
           const espec = especialidades.find(e => e.nome === row['Especialidade'])
@@ -228,7 +228,7 @@ export default function ConsolidadoProfissionalClient({
             return isNaN(num) ? fallback : num
           }
 
-          await supabase.from('consolidado_profissional').insert({
+          payloads.push({
             estabelecimento_id: estab.id,
             especialidade_id: espec.id,
             profissional_id: prof.id,
@@ -238,7 +238,14 @@ export default function ConsolidadoProfissionalClient({
             carga_horaria_agendamento: getNum(row['CH Agendamento'], 0),
             pacientes_hora: getNum(row['Pacientes/Hora'], null),
           })
-          imported++
+        }
+
+        let imported = 0
+        const CHUNK_SIZE = 100
+        for (let i = 0; i < payloads.length; i += CHUNK_SIZE) {
+          const chunk = payloads.slice(i, i + CHUNK_SIZE)
+          const { error } = await supabase.from('consolidado_profissional').insert(chunk)
+          if (!error) imported += chunk.length
         }
 
         const selectQ = '*, estabelecimento:estabelecimentos(nome, id), especialidade:especialidades(nome, id), profissional:profissionais(nome, id), procedimento:procedimentos(nome, id)'
