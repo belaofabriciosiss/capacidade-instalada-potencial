@@ -162,8 +162,11 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
     const ids = Array.from(selectedIds)
     const { error } = await supabase.from('capacidade_potencial').delete().in('id', ids)
     if (error) { toast('Erro ao excluir registros selecionados.', 'error'); setBulkDeleting(false); return }
-    setRecords(prev => prev.filter(r => !selectedIds.has(r.id)))
+    
+    const idsSet = new Set(ids)
+    setRecords(prev => prev.filter(r => !idsSet.has(r.id)))
     setSelectedIds(new Set())
+    
     toast(`${ids.length} registros excluídos.`, 'success')
     setBulkDeleting(false)
     setShowBulkDeleteModal(false)
