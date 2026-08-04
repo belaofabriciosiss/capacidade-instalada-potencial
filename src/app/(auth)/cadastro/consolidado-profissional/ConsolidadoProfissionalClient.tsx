@@ -222,7 +222,11 @@ export default function ConsolidadoProfissionalClient({
           const prof = profissionais.find(p => p.nome === row['Profissional'])
           if (!estab || !espec || !prof) continue
           const proc = procedimentos.find(p => p.nome === row['Procedimento'])
-          const pacHora = row['Pacientes/Hora'] ? parseFloat(String(row['Pacientes/Hora'])) : null
+          const getNum = (val: unknown, fallback: number | null) => {
+            if (val === undefined || val === null || val === '') return fallback
+            const num = Number(val)
+            return isNaN(num) ? fallback : num
+          }
 
           await supabase.from('consolidado_profissional').insert({
             estabelecimento_id: estab.id,
@@ -230,9 +234,9 @@ export default function ConsolidadoProfissionalClient({
             profissional_id: prof.id,
             tipo: String(row['Tipo'] || 'Consulta'),
             procedimento_id: proc?.id || null,
-            carga_horaria_semanal: parseFloat(String(row['CH Semanal'] || 0)),
-            carga_horaria_agendamento: parseFloat(String(row['CH Agendamento'] || 0)),
-            pacientes_hora: pacHora,
+            carga_horaria_semanal: getNum(row['CH Semanal'], 0),
+            carga_horaria_agendamento: getNum(row['CH Agendamento'], 0),
+            pacientes_hora: getNum(row['Pacientes/Hora'], null),
           })
           imported++
         }

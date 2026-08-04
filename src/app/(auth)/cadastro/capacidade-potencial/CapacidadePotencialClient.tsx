@@ -177,12 +177,19 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
         for (const row of rows) {
           const estab = estabelecimentos.find(e => e.nome === row['Estabelecimento'])
           if (!estab) continue
+
+          const getNum = (val: unknown, fallback: number) => {
+            if (val === undefined || val === null || val === '') return fallback
+            const num = Number(val)
+            return isNaN(num) ? fallback : num
+          }
+
           const payload = {
             estabelecimento_id: estab.id,
             tipo_sala: String(row['Tipo de Sala'] || 'Consultas'),
-            total_salas: parseInt(String(row['Total de Salas'] || 1)),
-            horas_dia: parseFloat(String(row['Horas/Dia'] || 8)),
-            pacientes_hora: parseFloat(String(row['Pacientes/Hora'] || 2)),
+            total_salas: getNum(row['Total de Salas'], 1),
+            horas_dia: getNum(row['Horas/Dia'], 8),
+            pacientes_hora: getNum(row['Pacientes/Hora'], 2),
           }
           await supabase.from('capacidade_potencial').insert(payload)
           imported++
