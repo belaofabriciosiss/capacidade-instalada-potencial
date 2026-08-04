@@ -2,21 +2,22 @@
 
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  PieChart, Pie, Cell, ResponsiveContainer
+  PieChart, Pie, Cell, ResponsiveContainer, LabelList
 } from 'recharts'
 import { useState, useMemo } from 'react'
-import { Building2, Filter } from 'lucide-react'
+import { Building2, Filter, TrendingUp, Activity, BarChart3, Users } from 'lucide-react'
 
 interface Props {
   capPot: Array<{ estabelecimento?: { nome: string }; tipo_sala: string; capacidade_potencial: number }>
-  consol: Array<{ estabelecimento?: { nome: string }; tipo: string; capacidade_instalada: number }>
+  consol: Array<{ estabelecimento?: { nome: string }; tipo: string; capacidade_instalada: number; profissional_id?: string | null }>
   estabelecimentos: Array<{ id: string; nome: string }>
+  totalProfissionais: number
 }
 
 const COLORS_PIE = ['#6366f1', '#34d399', '#fbbf24', '#f87171']
 const TIPOS_SALA = ['Consultas', 'Exames', 'Procedimentos', 'Multifuncional']
 
-export default function DashboardCharts({ capPot, consol, estabelecimentos }: Props) {
+export default function DashboardCharts({ capPot, consol, estabelecimentos, totalProfissionais }: Props) {
   const [filterEstab, setFilterEstab] = useState('')
   const [filterTipo, setFilterTipo] = useState('')
 
@@ -35,6 +36,63 @@ export default function DashboardCharts({ capPot, consol, estabelecimentos }: Pr
       return true
     })
   }, [consol, filterEstab, filterTipo])
+
+  // KPIs
+  const totalCapPotencial = useMemo(() => {
+    return filteredCapPot.reduce((s, r) => s + (r.capacidade_potencial || 0), 0)
+  }, [filteredCapPot])
+
+  const totalCapInstalada = useMemo(() => {
+    return filteredConsol.reduce((s, r) => s + (r.capacidade_instalada || 0), 0)
+  }, [filteredConsol])
+
+  const percOcupacao = totalCapPotencial > 0
+    ? ((totalCapInstalada / totalCapPotencial) * 100).toFixed(1)
+    : '0.0'
+
+  const computedProfissionais = useMemo(() => {
+    if (!filterEstab && !filterTipo) return totalProfissionais
+    const profs = new Set()
+    filteredConsol.forEach(r => {
+      if (r.profissional_id) profs.add(r.profissional_id)
+    })
+    return profs.size
+  }, [filteredConsol, filterEstab, filterTipo, totalProfissionais])
+
+  const kpis = [
+    {
+      label: 'Capacidade Potencial',
+      value: totalCapPotencial.toLocaleString('pt-BR', { maximumFractionDigits: 0 }),
+      icon: TrendingUp,
+      color: '#6366f1',
+      bg: 'rgba(99,102,241,.1)',
+      desc: 'Total de capacidade potencial',
+    },
+    {
+      label: 'Capacidade Instalada',
+      value: totalCapInstalada.toLocaleString('pt-BR', { maximumFractionDigits: 0 }),
+      icon: Activity,
+      color: '#34d399',
+      bg: 'rgba(52,211,153,.1)',
+      desc: 'Total de capacidade instalada',
+    },
+    {
+      label: 'Índice de Ocupação',
+      value: `${percOcupacao}%`,
+      icon: BarChart3,
+      color: '#fbbf24',
+      bg: 'rgba(251,191,36,.1)',
+      desc: 'Instalada / Potencial',
+    },
+    {
+      label: 'Profissionais',
+      value: computedProfissionais.toString(),
+      icon: Users,
+      color: '#818cf8',
+      bg: 'rgba(129,140,248,.1)',
+      desc: filterEstab || filterTipo ? 'Profissionais filtrados' : 'Profissionais cadastrados',
+    },
+  ]
 
   // Bar chart data: por estabelecimento
   const barData = useMemo(() => {
@@ -78,6 +136,23 @@ export default function DashboardCharts({ capPot, consol, estabelecimentos }: Pr
 
   return (
     <>
+      {/* KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+        {kpis.map((kpi) => {
+          const Icon = kpi.icon
+          return (
+            <div key={kpi.label} className="kpi-card">
+              <div className="kpi-icon" style={{ background: kpi.bg }}>
+                <Icon size={20} color={kpi.color} />
+              </div>
+              <div className="kpi-value">{kpi.value}</div>
+              <div className="kpi-label">{kpi.label}</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>{kpi.desc}</div>
+            </div>
+          )
+        })}
+      </div>
+
       {/* Filters */}
       <div className="card card-md" style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: '0.8125rem', fontWeight: 600 }}>
@@ -142,8 +217,12 @@ export default function DashboardCharts({ capPot, consol, estabelecimentos }: Pr
                 <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
                 <Tooltip contentStyle={tooltipStyle} />
                 <Legend wrapperStyle={{ fontSize: '0.8rem' }} />
-                <Bar dataKey="Cap. Potencial" fill="#6366f1" radius={[4,4,0,0]} />
-                <Bar dataKey="Cap. Instalada" fill="#34d399" radius={[4,4,0,0]} />
+                <Bar dataKey="Cap. Potencial" fill="#6366f1" radius={[4,4,0,0]}>
+                  <LabelList dataKey="Cap. Potencial" position="top" style={{ fill: 'var(--text-muted)', fontSize: 10 }} />
+                </Bar>
+                <Bar dataKey="Cap. Instalada" fill="#34d399" radius={[4,4,0,0]}>
+                  <LabelList dataKey="Cap. Instalada" position="top" style={{ fill: 'var(--text-muted)', fontSize: 10 }} />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           )}
