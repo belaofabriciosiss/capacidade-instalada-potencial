@@ -47,6 +47,7 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
 
   const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -217,6 +218,7 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setIsImporting(true)
     const reader = new FileReader()
     reader.onload = async (ev) => {
       try {
@@ -226,9 +228,14 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
         const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws)
 
         const payloads = []
+        let skipped = 0
         for (const row of rows) {
-          const estab = estabelecimentos.find(e => e.nome === row['Estabelecimento'])
-          if (!estab) continue
+          const rawEstab = String(row['Estabelecimento'] || '').toLowerCase().trim()
+          const estab = estabelecimentos.find(e => e.nome.toLowerCase().trim() === rawEstab)
+          if (!estab) {
+            skipped++
+            continue
+          }
 
           const getNum = (val: unknown, fallback: number) => {
             if (val === undefined || val === null || val === '') return fallback
@@ -259,9 +266,16 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
           .select('*, estabelecimento:estabelecimentos(nome, id)')
           .order('created_at', { ascending: false })
         if (refreshed) setRecords(refreshed as CapacidadePotencial[])
-        toast(`${imported} registros importados com sucesso!`, 'success')
+        
+        if (skipped > 0) {
+          toast(`${imported} importados. ${skipped} ignorados (estab. não encontrado).`, 'warning')
+        } else {
+          toast(`${imported} registros importados com sucesso!`, 'success')
+        }
       } catch {
         toast('Erro ao importar arquivo. Verifique o formato.', 'error')
+      } finally {
+        setIsImporting(false)
       }
     }
     reader.readAsArrayBuffer(file)
@@ -284,9 +298,10 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
           <button className="btn btn-secondary btn-sm" onClick={handleTemplate}>
             <Download size={14} /> Template
           </button>
-          <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer' }}>
-            <Upload size={14} /> Importar
-            <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImport} style={{ display: 'none' }} />
+          <label className="btn btn-secondary btn-sm" style={{ cursor: isImporting ? 'wait' : 'pointer', opacity: isImporting ? 0.7 : 1 }}>
+            {isImporting ? <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : <Upload size={14} />}
+            {isImporting ? 'Importando...' : 'Importar'}
+            <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImport} style={{ display: 'none' }} disabled={isImporting} />
           </label>
           <button className="btn btn-secondary btn-sm" onClick={handleExport}>
             <Download size={14} /> Exportar

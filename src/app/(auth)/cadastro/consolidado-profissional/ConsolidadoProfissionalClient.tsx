@@ -56,6 +56,7 @@ export default function ConsolidadoProfissionalClient({
   const [deleteTarget, setDeleteTarget] = useState<ConsolidadoProfissional | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
 
   const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -207,6 +208,7 @@ export default function ConsolidadoProfissionalClient({
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setIsImporting(true)
     const reader = new FileReader()
     reader.onload = async (ev) => {
       try {
@@ -216,12 +218,24 @@ export default function ConsolidadoProfissionalClient({
         const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws)
 
         const payloads = []
+        let skipped = 0
         for (const row of rows) {
-          const estab = estabelecimentos.find(e => e.nome === row['Estabelecimento'])
-          const espec = especialidades.find(e => e.nome === row['Especialidade'])
-          const prof = profissionais.find(p => p.nome === row['Profissional'])
-          if (!estab || !espec || !prof) continue
-          const proc = procedimentos.find(p => p.nome === row['Procedimento'])
+          const rawEstab = String(row['Estabelecimento'] || '').toLowerCase().trim()
+          const rawEspec = String(row['Especialidade'] || '').toLowerCase().trim()
+          const rawProf = String(row['Profissional'] || '').toLowerCase().trim()
+
+          const estab = estabelecimentos.find(e => e.nome.toLowerCase().trim() === rawEstab)
+          const espec = especialidades.find(e => e.nome.toLowerCase().trim() === rawEspec)
+          const prof = profissionais.find(p => p.nome.toLowerCase().trim() === rawProf)
+          
+          if (!estab || !espec || !prof) {
+            skipped++
+            continue
+          }
+          
+          const rawProc = String(row['Procedimento'] || '').toLowerCase().trim()
+          const proc = procedimentos.find(p => p.nome.toLowerCase().trim() === rawProc)
+          
           const getNum = (val: unknown, fallback: number | null) => {
             if (val === undefined || val === null || val === '') return fallback
             const num = Number(val)
@@ -251,9 +265,16 @@ export default function ConsolidadoProfissionalClient({
         const selectQ = '*, estabelecimento:estabelecimentos(nome, id), especialidade:especialidades(nome, id), profissional:profissionais(nome, id), procedimento:procedimentos(nome, id)'
         const { data: refreshed } = await supabase.from('consolidado_profissional').select(selectQ).order('created_at', { ascending: false })
         if (refreshed) setRecords(refreshed as ConsolidadoProfissional[])
-        toast(`${imported} registros importados!`, 'success')
+        
+        if (skipped > 0) {
+          toast(`${imported} importados. ${skipped} ignorados (nomes não encontrados).`, 'warning')
+        } else {
+          toast(`${imported} registros importados com sucesso!`, 'success')
+        }
       } catch {
         toast('Erro ao importar arquivo.', 'error')
+      } finally {
+        setIsImporting(false)
       }
     }
     reader.readAsArrayBuffer(file)
@@ -268,10 +289,13 @@ export default function ConsolidadoProfissionalClient({
           <p className="page-subtitle">Cadastro da capacidade instalada por profissional, especialidade e estabelecimento</p>
         </div>
         <div className="page-actions">
-          <button className="btn btn-secondary btn-sm" onClick={handleTemplate}><Download size={14} /> Template</button>
-          <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer' }}>
-            <Upload size={14} /> Importar
-            <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImport} style={{ display: 'none' }} />
+          <button className="btn btn-secondary btn-sm" onClick={handleTemplate}>
+            <Download size={14} /> Template
+          </button>
+          <label className="btn btn-secondary btn-sm" style={{ cursor: isImporting ? 'wait' : 'pointer', opacity: isImporting ? 0.7 : 1 }}>
+            {isImporting ? <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : <Upload size={14} />}
+            {isImporting ? 'Importando...' : 'Importar'}
+            <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImport} style={{ display: 'none' }} disabled={isImporting} />
           </label>
           <button className="btn btn-secondary btn-sm" onClick={handleExport}><Download size={14} /> Exportar</button>
           <button className="btn btn-primary" onClick={openCreate} id="btn-novo-consol">

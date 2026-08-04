@@ -38,6 +38,7 @@ export default function MasterCrudClient({ tableName, label, labelPlural, initia
   const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Item | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
 
   const filtered = items.filter(i => i.nome.toLowerCase().includes(search.toLowerCase()))
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
@@ -101,6 +102,7 @@ export default function MasterCrudClient({ tableName, label, labelPlural, initia
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setIsImporting(true)
     const reader = new FileReader()
     reader.onload = async (ev) => {
       try {
@@ -138,6 +140,8 @@ export default function MasterCrudClient({ tableName, label, labelPlural, initia
         }
       } catch (err) {
         toast('Erro ao importar arquivo.', 'error')
+      } finally {
+        setIsImporting(false)
       }
     }
     reader.readAsArrayBuffer(file)
@@ -155,9 +159,10 @@ export default function MasterCrudClient({ tableName, label, labelPlural, initia
           <button className="btn btn-secondary btn-sm" onClick={handleTemplate}>
             <Download size={14} /> Template
           </button>
-          <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer' }}>
-            <Upload size={14} /> Importar
-            <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImport} style={{ display: 'none' }} />
+          <label className="btn btn-secondary btn-sm" style={{ cursor: isImporting ? 'wait' : 'pointer', opacity: isImporting ? 0.7 : 1 }}>
+            {isImporting ? <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : <Upload size={14} />}
+            {isImporting ? 'Importando...' : 'Importar'}
+            <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImport} style={{ display: 'none' }} disabled={isImporting} />
           </label>
           <button className="btn btn-primary" onClick={openCreate} id={`btn-novo-${tableName}`}>
             <Plus size={16} /> Novo(a) {label}
