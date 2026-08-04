@@ -239,11 +239,14 @@ export default function ConsolidadoProfissionalClient({
             return isNaN(num) ? fallback : num
           }
 
+          const rawTipo = String(row['Tipo'] || '').toLowerCase().trim()
+          const tipo = rawTipo.includes('exame') ? 'Exame' : 'Consulta'
+
           payloads.push({
             estabelecimento_id: estab.id,
             especialidade_id: espec?.id || null,
             profissional_id: prof?.id || null,
-            tipo: String(row['Tipo'] || 'Consulta'),
+            tipo: tipo,
             procedimento_id: proc?.id || null,
             carga_horaria_semanal: getNum(row['CH Semanal'], 0),
             carga_horaria_agendamento: getNum(row['CH Agendamento'], 0),
