@@ -5,7 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/contexts/ToastContext'
 import SearchBar from '@/components/ui/SearchBar'
 import ConfirmModal from '@/components/ui/ConfirmModal'
-import { Plus, Pencil, Trash2, X, Check, XCircle } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, XCircle, Download, Upload } from 'lucide-react'
+import * as XLSX from 'xlsx'
 
 interface Item {
   id: string
@@ -88,6 +89,61 @@ export default function MasterCrudClient({ tableName, label, labelPlural, initia
     setDeleteTarget(null)
   }
 
+  const handleTemplate = () => {
+    const rows = [{ 'Nome': `Exemplo de ${label}` }]
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Template')
+    XLSX.writeFile(wb, `template_importacao_${tableName}.xlsx`)
+    toast('Template baixado!', 'info')
+  }
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      try {
+        const data = new Uint8Array(ev.target?.result as ArrayBuffer)
+        const wb = XLSX.read(data, { type: 'array' })
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws)
+
+        let imported = 0
+        let duplicated = 0
+
+        for (const row of rows) {
+          const rawNome = row['Nome'] || row['nome'] || Object.values(row)[0]
+          if (!rawNome) continue
+          const cleanNome = String(rawNome).trim()
+          if (!cleanNome) continue
+
+          const { error } = await supabase.from(tableName).insert({ nome: cleanNome })
+          if (error && error.code === '23505') {
+            duplicated++
+          } else if (!error) {
+            imported++
+          }
+        }
+
+        const { data: refreshed } = await supabase.from(tableName).select('*').order('nome')
+        if (refreshed) setItems(refreshed as Item[])
+        
+        if (imported > 0) {
+          toast(`${imported} ${labelPlural.toLowerCase()} importados com sucesso! ${duplicated > 0 ? `(${duplicated} ignorados pois já existiam)` : ''}`, 'success')
+        } else if (duplicated > 0) {
+          toast(`Nenhum registro novo. ${duplicated} já existiam.`, 'info')
+        } else {
+          toast('Nenhum dado válido encontrado na planilha.', 'warn')
+        }
+      } catch (err) {
+        toast('Erro ao importar arquivo.', 'error')
+      }
+    }
+    reader.readAsArrayBuffer(file)
+    e.target.value = ''
+  }
+
   return (
     <>
       <div className="page-header">
@@ -96,6 +152,13 @@ export default function MasterCrudClient({ tableName, label, labelPlural, initia
           <p className="page-subtitle">Gerencie os {labelPlural.toLowerCase()} cadastrados no sistema</p>
         </div>
         <div className="page-actions">
+          <button className="btn btn-secondary btn-sm" onClick={handleTemplate}>
+            <Download size={14} /> Template
+          </button>
+          <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer' }}>
+            <Upload size={14} /> Importar
+            <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImport} style={{ display: 'none' }} />
+          </label>
           <button className="btn btn-primary" onClick={openCreate} id={`btn-novo-${tableName}`}>
             <Plus size={16} /> Novo(a) {label}
           </button>
