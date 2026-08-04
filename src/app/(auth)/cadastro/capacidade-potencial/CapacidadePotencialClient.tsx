@@ -16,11 +16,11 @@ const TIPOS_SALA: TipoSala[] = ['Consultas', 'Exames', 'Procedimentos', 'Multifu
 const PAGE_SIZE = 15
 
 const schema = z.object({
-  estabelecimento_id: z.string().min(1, 'Selecione um estabelecimento'),
+  estabelecimento_id: z.string().min(1, 'Obrigatório'),
   tipo_sala: z.enum(['Consultas', 'Exames', 'Procedimentos', 'Multifuncional']),
-  total_salas: z.coerce.number().int().min(1, 'Mínimo 1 sala'),
-  horas_dia: z.coerce.number().min(0.1, 'Mínimo 0.1'),
-  pacientes_hora: z.coerce.number().min(0.1, 'Mínimo 0.1'),
+  total_salas: z.coerce.number().min(0, 'Mínimo 0'),
+  horas_dia: z.coerce.number().min(0, 'Mínimo 0'),
+  pacientes_hora: z.coerce.number().min(0, 'Mínimo 0'),
 })
 
 type FormData = z.infer<typeof schema>
@@ -246,9 +246,9 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
           payloads.push({
             estabelecimento_id: estab.id,
             tipo_sala: String(row['Tipo de Sala'] || 'Consultas'),
-            total_salas: getNum(row['Total de Salas'], 1),
-            horas_dia: getNum(row['Horas/Dia'], 8),
-            pacientes_hora: getNum(row['Pacientes/Hora'], 2),
+            total_salas: getNum(row['Total de Salas'], 0),
+            horas_dia: getNum(row['Horas/Dia'], 0),
+            pacientes_hora: getNum(row['Pacientes/Hora'], 0),
           })
         }
 

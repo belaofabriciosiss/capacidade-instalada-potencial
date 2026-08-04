@@ -20,10 +20,10 @@ const PAGE_SIZE = 15
 
 const schema = z.object({
   estabelecimento_id: z.string().min(1, 'Obrigatório'),
-  especialidade_id: z.string().min(1, 'Obrigatório'),
-  profissional_id: z.string().min(1, 'Obrigatório'),
+  especialidade_id: z.string().optional().or(z.literal('')),
+  profissional_id: z.string().optional().or(z.literal('')),
   tipo: z.enum(['Consulta', 'Exame']),
-  procedimento_id: z.string().optional(),
+  procedimento_id: z.string().optional().or(z.literal('')),
   carga_horaria_semanal: z.coerce.number().min(0, 'Mínimo 0'),
   carga_horaria_agendamento: z.coerce.number().min(0, 'Mínimo 0'),
   pacientes_hora: z.coerce.number().min(0).optional().or(z.literal('')),
@@ -101,32 +101,28 @@ export default function ConsolidadoProfissionalClient({
     setEditRecord(r)
     reset({
       estabelecimento_id: r.estabelecimento_id,
-      especialidade_id: r.especialidade_id,
-      profissional_id: r.profissional_id,
+      especialidade_id: r.especialidade_id || '',
+      profissional_id: r.profissional_id || '',
       tipo: r.tipo,
       procedimento_id: r.procedimento_id || '',
       carga_horaria_semanal: r.carga_horaria_semanal,
       carga_horaria_agendamento: r.carga_horaria_agendamento,
-      pacientes_hora: r.pacientes_hora ?? '',
+      pacientes_hora: r.pacientes_hora === null ? '' : r.pacientes_hora,
     })
     setIsModalOpen(true)
   }
 
   const onSubmit = async (data: FormData) => {
     setSaving(true)
-    const pacHora = data.pacientes_hora === '' || data.pacientes_hora === undefined || isNaN(Number(data.pacientes_hora))
-      ? null
-      : Number(data.pacientes_hora)
-
     const payload = {
       estabelecimento_id: data.estabelecimento_id,
-      especialidade_id: data.especialidade_id,
-      profissional_id: data.profissional_id,
+      especialidade_id: data.especialidade_id || null,
+      profissional_id: data.profissional_id || null,
       tipo: data.tipo,
       procedimento_id: data.procedimento_id || null,
       carga_horaria_semanal: data.carga_horaria_semanal,
       carga_horaria_agendamento: data.carga_horaria_agendamento,
-      pacientes_hora: pacHora,
+      pacientes_hora: data.pacientes_hora === '' || data.pacientes_hora === undefined || data.pacientes_hora === null ? null : Number(data.pacientes_hora),
     }
 
     const selectQuery = '*, estabelecimento:estabelecimentos(nome, id), especialidade:especialidades(nome, id), profissional:profissionais(nome, id), procedimento:procedimentos(nome, id)'
@@ -225,13 +221,14 @@ export default function ConsolidadoProfissionalClient({
           const rawProf = String(row['Profissional'] || '').toLowerCase().trim()
 
           const estab = estabelecimentos.find(e => e.nome.toLowerCase().trim() === rawEstab)
-          const espec = especialidades.find(e => e.nome.toLowerCase().trim() === rawEspec)
-          const prof = profissionais.find(p => p.nome.toLowerCase().trim() === rawProf)
           
-          if (!estab || !espec || !prof) {
+          if (!estab) {
             skipped++
             continue
           }
+
+          const espec = especialidades.find(e => e.nome.toLowerCase().trim() === rawEspec)
+          const prof = profissionais.find(p => p.nome.toLowerCase().trim() === rawProf)
           
           const rawProc = String(row['Procedimento'] || '').toLowerCase().trim()
           const proc = procedimentos.find(p => p.nome.toLowerCase().trim() === rawProc)
@@ -244,8 +241,8 @@ export default function ConsolidadoProfissionalClient({
 
           payloads.push({
             estabelecimento_id: estab.id,
-            especialidade_id: espec.id,
-            profissional_id: prof.id,
+            especialidade_id: espec?.id || null,
+            profissional_id: prof?.id || null,
             tipo: String(row['Tipo'] || 'Consulta'),
             procedimento_id: proc?.id || null,
             carga_horaria_semanal: getNum(row['CH Semanal'], 0),

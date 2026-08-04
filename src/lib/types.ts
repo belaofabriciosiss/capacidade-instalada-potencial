@@ -65,10 +65,10 @@ export interface ConsolidadoProfissional {
   id: string
   estabelecimento_id: string
   estabelecimento?: Estabelecimento
-  especialidade_id: string
-  especialidade?: Especialidade
-  profissional_id: string
-  profissional?: Profissional
+  especialidade_id: string | null
+  especialidade?: Especialidade | null
+  profissional_id: string | null
+  profissional?: Profissional | null
   tipo: TipoAtendimento
   procedimento_id: string | null
   procedimento?: Procedimento | null
