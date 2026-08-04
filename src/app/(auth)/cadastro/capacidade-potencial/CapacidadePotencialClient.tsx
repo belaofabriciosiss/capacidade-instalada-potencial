@@ -268,7 +268,7 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
         if (refreshed) setRecords(refreshed as CapacidadePotencial[])
         
         if (skipped > 0) {
-          toast(`${imported} importados. ${skipped} ignorados (estab. não encontrado).`, 'warning')
+          toast(`${imported} importados. ${skipped} ignorados (estab. não encontrado).`, 'error')
         } else {
           toast(`${imported} registros importados com sucesso!`, 'success')
         }

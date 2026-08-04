@@ -267,7 +267,7 @@ export default function ConsolidadoProfissionalClient({
         if (refreshed) setRecords(refreshed as ConsolidadoProfissional[])
         
         if (skipped > 0) {
-          toast(`${imported} importados. ${skipped} ignorados (nomes não encontrados).`, 'warning')
+          toast(`${imported} importados. ${skipped} ignorados (nomes não encontrados).`, 'error')
         } else {
           toast(`${imported} registros importados com sucesso!`, 'success')
         }
