@@ -27,7 +27,7 @@ const adminNavItems = [
     section: 'Cadastros',
     items: [
       { label: 'Capacidade Potencial', href: '/cadastro/capacidade-potencial', icon: BarChart3 },
-      { label: 'Consolidado Profissional', href: '/cadastro/consolidado-profissional', icon: ClipboardPlus },
+      { label: 'Capacidade Instalada', href: '/cadastro/consolidado-profissional', icon: ClipboardPlus },
     ],
   },
   {

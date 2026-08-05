@@ -10,7 +10,7 @@ import {
   Estabelecimento, Especialidade, Profissional, Procedimento,
   ConsolidadoProfissional, TipoAtendimento
 } from '@/lib/types'
-import { Plus, Pencil, Trash2, Download, Upload, Calculator, X, Info } from 'lucide-react'
+import { Plus, Pencil, Trash2, Download, Upload, Calculator, X, Info, CheckSquare } from 'lucide-react'
 import SearchBar from '@/components/ui/SearchBar'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import * as XLSX from 'xlsx'
@@ -57,6 +57,9 @@ export default function ConsolidadoProfissionalClient({
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
 
   const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -161,6 +164,47 @@ export default function ConsolidadoProfissionalClient({
     toast('Registro excluído.', 'success')
     setDeleting(false)
     setDeleteTarget(null)
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return
+    setBulkDeleting(true)
+    const ids = Array.from(selectedIds)
+    const promises = ids.map(id => supabase.from('consolidado_profissional').delete().eq('id', id))
+    const results = await Promise.all(promises)
+    const errors = results.filter(r => r.error)
+    if (errors.length === ids.length) {
+      toast('Erro ao excluir registros.', 'error')
+      setBulkDeleting(false)
+      return
+    }
+    const idsSet = new Set(ids)
+    setRecords(prev => prev.filter(r => !idsSet.has(r.id)))
+    setSelectedIds(new Set())
+    if (errors.length > 0) {
+      toast(`${ids.length - errors.length} excluídos. ${errors.length} falharam.`, 'error')
+    } else {
+      toast(`${ids.length} registros excluídos.`, 'success')
+    }
+    setBulkDeleting(false)
+    setShowBulkDeleteModal(false)
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === paginated.length && paginated.length > 0) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(paginated.map(r => r.id)))
+    }
   }
 
   const handleExport = () => {
@@ -293,10 +337,15 @@ export default function ConsolidadoProfissionalClient({
     <>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Consolidado por Profissional</h1>
+          <h1 className="page-title">Capacidade Instalada</h1>
           <p className="page-subtitle">Cadastro da capacidade instalada por profissional, especialidade e estabelecimento</p>
         </div>
         <div className="page-actions">
+          {selectedIds.size > 0 && (
+            <button className="btn btn-sm" style={{ background: 'var(--danger-500)', color: '#fff', gap: 6 }} onClick={() => setShowBulkDeleteModal(true)}>
+              <Trash2 size={14} /> Excluir {selectedIds.size} selecionado{selectedIds.size !== 1 ? 's' : ''}
+            </button>
+          )}
           <button className="btn btn-secondary btn-sm" onClick={handleTemplate}>
             <Download size={14} /> Template
           </button>
@@ -341,9 +390,18 @@ export default function ConsolidadoProfissionalClient({
           <table className="data-table">
             <thead>
               <tr>
+                <th style={{ width: 36, textAlign: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={paginated.length > 0 && selectedIds.size === paginated.length}
+                    onChange={toggleSelectAll}
+                    style={{ cursor: 'pointer' }}
+                  />
+                </th>
                 <th>Estabelecimento</th>
                 <th>Especialidade</th>
                 <th>Profissional</th>
+                <th>Procedimento</th>
                 <th>Tipo</th>
                 <th>CH Semanal</th>
                 <th>CH Agendamento</th>
@@ -355,14 +413,23 @@ export default function ConsolidadoProfissionalClient({
             </thead>
             <tbody>
               {paginated.length === 0 ? (
-                <tr><td colSpan={10}>
+                <tr><td colSpan={12}>
                   <div className="empty-state"><p style={{ color: 'var(--text-muted)' }}>Nenhum registro encontrado</p></div>
                 </td></tr>
               ) : paginated.map(r => (
-                <tr key={r.id}>
+                <tr key={r.id} style={{ background: selectedIds.has(r.id) ? 'rgba(99,102,241,.07)' : '' }}>
+                  <td style={{ textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(r.id)}
+                      onChange={() => toggleSelect(r.id)}
+                      style={{ cursor: 'pointer' }}
+                    />
+                  </td>
                   <td><strong>{r.estabelecimento?.nome || '-'}</strong></td>
                   <td>{r.especialidade?.nome || '-'}</td>
                   <td>{r.profissional?.nome || '-'}</td>
+                  <td style={{ fontSize: '0.8rem', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.procedimento?.nome || <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
                   <td><span className={`badge ${r.tipo === 'Consulta' ? 'badge-brand' : 'badge-success'}`}>{r.tipo}</span></td>
                   <td>{r.carga_horaria_semanal}</td>
                   <td>{r.carga_horaria_agendamento}</td>
@@ -404,7 +471,7 @@ export default function ConsolidadoProfissionalClient({
         <div className="modal-overlay" onClick={() => !saving && setIsModalOpen(false)}>
           <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3 className="modal-title">{editRecord ? 'Editar' : 'Novo'} Registro — Consolidado por Profissional</h3>
+              <h3 className="modal-title">{editRecord ? 'Editar' : 'Novo'} Registro — Capacidade Instalada</h3>
               <button className="btn-icon" onClick={() => setIsModalOpen(false)} disabled={saving}><X size={18} /></button>
             </div>
             <form onSubmit={handleSubmit(onSubmit)}>
@@ -536,6 +603,16 @@ export default function ConsolidadoProfissionalClient({
         onCancel={() => setDeleteTarget(null)}
         loading={deleting}
         confirmLabel="Excluir"
+      />
+
+      <ConfirmModal
+        isOpen={showBulkDeleteModal}
+        title={`Excluir ${selectedIds.size} Registros`}
+        message={`Tem certeza que deseja excluir ${selectedIds.size} registro${selectedIds.size !== 1 ? 's' : ''} selecionado${selectedIds.size !== 1 ? 's' : ''}? Esta ação não pode ser desfeita.`}
+        onConfirm={handleBulkDelete}
+        onCancel={() => setShowBulkDeleteModal(false)}
+        loading={bulkDeleting}
+        confirmLabel="Excluir Todos"
       />
     </>
   )

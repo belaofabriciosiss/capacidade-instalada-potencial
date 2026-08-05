@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ConsolidadoProfissionalClient from './ConsolidadoProfissionalClient'
 
-export const metadata = { title: 'Consolidado por Profissional — Painel BI' }
+export const metadata = { title: 'Capacidade Instalada — Painel BI' }
 
 export default async function ConsolidadoProfissionalPage() {
   const supabase = await createClient()
