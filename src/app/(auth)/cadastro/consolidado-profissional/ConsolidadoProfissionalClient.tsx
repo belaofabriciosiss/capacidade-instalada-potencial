@@ -314,8 +314,10 @@ export default function ConsolidadoProfissionalClient({
           const rawProf  = getStr('Profissional', 'PROFISSIONAL', 'Nome', 'NOME', 'nome').toLowerCase()
           const rawProc  = getStr('Procedimento', 'PROCEDIMENTO', 'procedimento', 'PROCEDIMENTO').toLowerCase()
 
-          // Optional lookups — if blank or not found, save null
-          const estab = rawEstab ? estabelecimentos.find(e => e.nome.toLowerCase().trim() === rawEstab) : undefined
+          // Establishment is mandatory — skip if blank or not found
+          if (!rawEstab) { skipped++; continue }
+          const estab = estabelecimentos.find(e => e.nome.toLowerCase().trim() === rawEstab)
+          if (!estab) { skipped++; continue }
 
           // Optional lookups — if blank or not found, save null
           const espec = rawEspec ? especialidades.find(e => e.nome.toLowerCase().trim() === rawEspec) : undefined
@@ -346,7 +348,7 @@ export default function ConsolidadoProfissionalClient({
           const tipo = rawTipo.includes('exame') ? 'Exame' : 'Consulta'
 
           payloads.push({
-            estabelecimento_id: estab?.id || null,
+            estabelecimento_id: estab.id,
             especialidade_id: espec?.id || null,
             profissional_id: prof?.id || null,
             tipo: tipo,
