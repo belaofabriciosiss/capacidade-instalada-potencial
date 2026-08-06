@@ -299,7 +299,7 @@ export default function ConsolidadoProfissionalClient({
         let skipped = 0
         for (const row of rows) {
           // Helper: get first non-empty value from multiple possible column names
-          const getStr = (...keys: string[]) => {
+          const getStr = (row: any, ...keys: string[]) => {
             for (const k of keys) {
               const v = row[k]
               if (v !== undefined && v !== null && String(v).trim() !== '') {
@@ -309,20 +309,64 @@ export default function ConsolidadoProfissionalClient({
             return ''
           }
 
-          const rawEstab = getStr('Estabelecimento', 'ESTABELECIMENTO', 'estabelecimento').toLowerCase()
-          const rawEspec = getStr('Especialidade', 'ESPECIALIDADE', 'especialidade', 'Especialidade ').toLowerCase()
-          const rawProf  = getStr('Profissional', 'PROFISSIONAL', 'Nome', 'NOME', 'nome').toLowerCase()
-          const rawProc  = getStr('Procedimento', 'PROCEDIMENTO', 'procedimento', 'PROCEDIMENTO').toLowerCase()
+        // 1. Pre-pass: Identificar cadastros faltando
+        const missingEstab = new Map<string, string>()
+        const missingEspec = new Map<string, string>()
+        const missingProf = new Map<string, string>()
+        const missingProc = new Map<string, string>()
 
-          // Establishment is mandatory — skip if blank or not found
+        for (const row of rows) {
+          const rawEstab = getStr(row, 'Estabelecimento', 'ESTABELECIMENTO', 'estabelecimento')
+          const rawEspec = getStr(row, 'Especialidade', 'ESPECIALIDADE', 'especialidade', 'Especialidade ')
+          const rawProf  = getStr(row, 'Profissional', 'PROFISSIONAL', 'Nome', 'NOME', 'nome')
+          const rawProc  = getStr(row, 'Procedimento', 'PROCEDIMENTO', 'procedimento', 'PROCEDIMENTO')
+
+          if (rawEstab && !estabelecimentos.some(e => e.nome.toLowerCase().trim() === rawEstab.toLowerCase())) {
+            missingEstab.set(rawEstab.toLowerCase(), rawEstab)
+          }
+          if (rawEspec && !especialidades.some(e => e.nome.toLowerCase().trim() === rawEspec.toLowerCase())) {
+            missingEspec.set(rawEspec.toLowerCase(), rawEspec)
+          }
+          if (rawProf && !profissionais.some(e => e.nome.toLowerCase().trim() === rawProf.toLowerCase())) {
+            missingProf.set(rawProf.toLowerCase(), rawProf)
+          }
+          if (rawProc && !procedimentos.some(e => e.nome.toLowerCase().trim() === rawProc.toLowerCase())) {
+            missingProc.set(rawProc.toLowerCase(), rawProc)
+          }
+        }
+
+        // 2. Inserir cadastros faltando
+        const insertMissing = async (table: string, missingMap: Map<string, string>, currentArray: any[]) => {
+          if (missingMap.size === 0) return currentArray
+          const toInsert = Array.from(missingMap.values()).map(nome => ({ nome, ativo: true }))
+          const { data, error } = await supabase.from(table).insert(toInsert).select()
+          if (error) {
+            console.error(`Erro ao criar ${table}:`, error)
+            return currentArray
+          }
+          return [...currentArray, ...(data || [])]
+        }
+
+        const currEstabelecimentos = await insertMissing('estabelecimentos', missingEstab, estabelecimentos)
+        const currEspecialidades = await insertMissing('especialidades', missingEspec, especialidades)
+        const currProfissionais = await insertMissing('profissionais', missingProf, profissionais)
+        const currProcedimentos = await insertMissing('procedimentos', missingProc, procedimentos)
+
+        // 3. Construir payloads
+        for (const row of rows) {
+          const rawEstab = getStr(row, 'Estabelecimento', 'ESTABELECIMENTO', 'estabelecimento').toLowerCase()
+          const rawEspec = getStr(row, 'Especialidade', 'ESPECIALIDADE', 'especialidade', 'Especialidade ').toLowerCase()
+          const rawProf  = getStr(row, 'Profissional', 'PROFISSIONAL', 'Nome', 'NOME', 'nome').toLowerCase()
+          const rawProc  = getStr(row, 'Procedimento', 'PROCEDIMENTO', 'procedimento', 'PROCEDIMENTO').toLowerCase()
+
+          // Estabelecimento é obrigatório, pula apenas se a linha estiver em branco (já que agora nós o criamos)
           if (!rawEstab) { skipped++; continue }
-          const estab = estabelecimentos.find(e => e.nome.toLowerCase().trim() === rawEstab)
-          if (!estab) { skipped++; continue }
+          const estab = currEstabelecimentos.find(e => e.nome.toLowerCase().trim() === rawEstab)
+          if (!estab) { skipped++; continue } // fallback de segurança
 
-          // Optional lookups — if blank or not found, save null
-          const espec = rawEspec ? especialidades.find(e => e.nome.toLowerCase().trim() === rawEspec) : undefined
-          const prof  = rawProf  ? profissionais.find(p => p.nome.toLowerCase().trim() === rawProf)  : undefined
-          const proc  = rawProc  ? procedimentos.find(p => p.nome.toLowerCase().trim() === rawProc)  : undefined
+          const espec = rawEspec ? currEspecialidades.find(e => e.nome.toLowerCase().trim() === rawEspec) : undefined
+          const prof  = rawProf  ? currProfissionais.find(p => p.nome.toLowerCase().trim() === rawProf)  : undefined
+          const proc  = rawProc  ? currProcedimentos.find(p => p.nome.toLowerCase().trim() === rawProc)  : undefined
 
           const getNum = (val: unknown, fallback: number | null) => {
             if (val === undefined || val === null || val === '') return fallback

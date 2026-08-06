@@ -264,9 +264,35 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
 
         const payloads = []
         let skipped = 0
+        // 1. Pre-pass: Identificar estabelecimentos faltando
+        const missingEstab = new Map<string, string>()
+
+        for (const row of rows) {
+          const rawEstabStr = String(row['Estabelecimento'] || '').trim()
+          if (rawEstabStr) {
+            const rawEstab = rawEstabStr.toLowerCase()
+            if (!estabelecimentos.some(e => e.nome.toLowerCase().trim() === rawEstab)) {
+              missingEstab.set(rawEstab, rawEstabStr)
+            }
+          }
+        }
+
+        // 2. Inserir estabelecimentos faltando
+        let currEstabelecimentos = [...estabelecimentos]
+        if (missingEstab.size > 0) {
+          const toInsert = Array.from(missingEstab.values()).map(nome => ({ nome, ativo: true }))
+          const { data, error } = await supabase.from('estabelecimentos').insert(toInsert).select()
+          if (!error && data) {
+            currEstabelecimentos = [...currEstabelecimentos, ...data]
+          } else {
+            console.error('Erro ao criar estabelecimentos:', error)
+          }
+        }
+
+        // 3. Construir payloads
         for (const row of rows) {
           const rawEstab = String(row['Estabelecimento'] || '').toLowerCase().trim()
-          const estab = estabelecimentos.find(e => e.nome.toLowerCase().trim() === rawEstab)
+          const estab = currEstabelecimentos.find(e => e.nome.toLowerCase().trim() === rawEstab)
           
           if (!estab) {
             skipped++
