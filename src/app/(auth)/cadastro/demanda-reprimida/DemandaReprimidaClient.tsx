@@ -207,8 +207,8 @@ export default function DemandaReprimidaClient({ procedimentos: initProc, initia
   const handleExport = () => {
     const rows = filtered.map(r => ({
       'Procedimento': r.procedimento?.nome || '',
-      'Média de Solicitações': r.media_solicitacoes,
-      'Demanda Reprimida': r.demanda_reprimida,
+      'Média de Solicitações': Math.ceil(r.media_solicitacoes),
+      'Demanda Reprimida': Math.ceil(r.demanda_reprimida),
     }))
     const ws = XLSX.utils.json_to_sheet(rows)
     const wb = XLSX.utils.book_new()
@@ -288,7 +288,7 @@ export default function DemandaReprimidaClient({ procedimentos: initProc, initia
           const getNum = (val: unknown, fallback: number) => {
             if (val === undefined || val === null || val === '') return fallback
             const num = Number(val)
-            return isNaN(num) ? fallback : num
+            return isNaN(num) ? fallback : Math.ceil(num)
           }
 
           payloads.push({
@@ -474,8 +474,8 @@ export default function DemandaReprimidaClient({ procedimentos: initProc, initia
                       />
                     </td>
                     <td>{r.procedimento?.nome || 'N/A'}</td>
-                    <td>{r.media_solicitacoes}</td>
-                    <td>{r.demanda_reprimida}</td>
+                    <td>{Math.ceil(r.media_solicitacoes)}</td>
+                    <td>{Math.ceil(r.demanda_reprimida)}</td>
                     <td style={{ textAlign: 'center' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                         <button className="action-btn" title="Editar" onClick={() => openEdit(r)}><Pencil size={15} /></button>
