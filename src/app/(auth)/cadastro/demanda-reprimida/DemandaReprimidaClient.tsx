@@ -125,8 +125,8 @@ export default function DemandaReprimidaClient({ procedimentos: initProc, initia
     setEditRecord(r)
     reset({
       procedimento_id: r.procedimento_id || '',
-      media_solicitacoes: r.media_solicitacoes,
-      demanda_reprimida: r.demanda_reprimida,
+      media_solicitacoes: Math.ceil(r.media_solicitacoes),
+      demanda_reprimida: Math.ceil(r.demanda_reprimida),
     })
     setIsModalOpen(true)
   }
@@ -426,12 +426,12 @@ export default function DemandaReprimidaClient({ procedimentos: initProc, initia
           <table className="data-table">
             <thead>
               <tr>
-                <th style={{ width: 36, textAlign: 'center' }}>
+                <th style={{ width: 40, textAlign: 'center' }}>
                   <input
                     type="checkbox"
+                    className="form-checkbox"
                     checked={isAllPageSelected}
                     onChange={toggleSelectAll}
-                    style={{ cursor: 'pointer' }}
                   />
                 </th>
                 {([
@@ -468,18 +468,18 @@ export default function DemandaReprimidaClient({ procedimentos: initProc, initia
                     <td style={{ textAlign: 'center' }}>
                       <input
                         type="checkbox"
+                        className="form-checkbox"
                         checked={selectedIds.has(r.id)}
                         onChange={() => toggleSelect(r.id)}
-                        style={{ cursor: 'pointer' }}
                       />
                     </td>
                     <td>{r.procedimento?.nome || 'N/A'}</td>
                     <td>{Math.ceil(r.media_solicitacoes)}</td>
                     <td>{Math.ceil(r.demanda_reprimida)}</td>
                     <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                        <button className="action-btn" title="Editar" onClick={() => openEdit(r)}><Pencil size={15} /></button>
-                        <button className="action-btn" title="Excluir" onClick={() => setDeleteId(r.id)}><Trash2 size={15} color="var(--danger-500)" /></button>
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                        <button className="btn-icon" onClick={() => openEdit(r)} title="Editar"><Pencil size={14} /></button>
+                        <button className="btn-icon" onClick={() => setDeleteId(r.id)} title="Excluir" style={{ color: 'var(--danger-400)' }}><Trash2 size={14} /></button>
                       </div>
                     </td>
                   </tr>
@@ -492,59 +492,75 @@ export default function DemandaReprimidaClient({ procedimentos: initProc, initia
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="pagination">
-            <button className="btn btn-secondary btn-sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
-              Anterior
-            </button>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Página {page} de {totalPages}
+            <span className="pagination-info">
+              Exibindo {Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)}–{Math.min(page * PAGE_SIZE, filtered.length)} de {filtered.length}
             </span>
-            <button className="btn btn-secondary btn-sm" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>
-              Próxima
-            </button>
+            <div className="pagination-controls">
+              <button className="btn-icon" disabled={page === 1} onClick={() => setPage(p => p - 1)} title="Anterior">
+                <ArrowUpDown size={14} style={{ transform: 'rotate(90deg)' }} /> {/* placeholder for left arrow */}
+              </button>
+              <div className="pagination-pages">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                  <button
+                    key={p}
+                    className={`pagination-page ${page === p ? 'active' : ''}`}
+                    onClick={() => setPage(p)}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+              <button className="btn-icon" disabled={page === totalPages} onClick={() => setPage(p => p + 1)} title="Próxima">
+                <ArrowUpDown size={14} style={{ transform: 'rotate(-90deg)' }} /> {/* placeholder for right arrow */}
+              </button>
+            </div>
           </div>
         )}
       </div>
 
       {/* Modal CRUD */}
       {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
+        <div className="modal-overlay" onClick={() => !saving && setIsModalOpen(false)}>
+          <div className="modal modal-md" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{editRecord ? 'Editar Registro' : 'Novo Registro'}</h2>
-              <button className="modal-close" onClick={() => setIsModalOpen(false)}><X size={20} /></button>
+              <h3 className="modal-title">{editRecord ? 'Editar Registro' : 'Novo Registro'} — Demanda Reprimida</h3>
+              <button className="btn-icon" onClick={() => setIsModalOpen(false)} disabled={saving}><X size={18} /></button>
             </div>
-            <div className="modal-body">
-              <form id="demanda-form" onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                
-                <div className="form-group">
-                  <label className="form-label">Procedimento</label>
-                  <select className="form-select" {...register('procedimento_id')} autoFocus>
-                    <option value="">Selecione...</option>
-                    {procedimentos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                  </select>
-                  {errors.procedimento_id && <span className="form-error">{errors.procedimento_id.message}</span>}
-                </div>
+            
+            <form id="demanda-form" onSubmit={handleSubmit(onSubmit)}>
+              <div className="modal-body">
+                <div className="form-grid form-grid-1" style={{ gap: 16 }}>
+                  <div className="form-group">
+                    <label className="form-label required">Procedimento</label>
+                    <select className={`form-select ${errors.procedimento_id ? 'error' : ''}`} {...register('procedimento_id')} autoFocus>
+                      <option value="">Selecione...</option>
+                      {procedimentos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                    </select>
+                    {errors.procedimento_id && <span className="form-error">{errors.procedimento_id.message}</span>}
+                  </div>
 
-                <div className="form-group">
-                  <label className="form-label">Média de Solicitações</label>
-                  <input type="number" step="1" className="form-input" {...register('media_solicitacoes')} />
-                  {errors.media_solicitacoes && <span className="form-error">{errors.media_solicitacoes.message}</span>}
-                </div>
+                  <div className="form-grid form-grid-2" style={{ gap: 16 }}>
+                    <div className="form-group">
+                      <label className="form-label required">Média de Solicitações</label>
+                      <input type="number" step="1" className={`form-input ${errors.media_solicitacoes ? 'error' : ''}`} {...register('media_solicitacoes')} />
+                      {errors.media_solicitacoes && <span className="form-error">{errors.media_solicitacoes.message}</span>}
+                    </div>
 
-                <div className="form-group">
-                  <label className="form-label">Demanda Reprimida</label>
-                  <input type="number" step="1" className="form-input" {...register('demanda_reprimida')} />
-                  {errors.demanda_reprimida && <span className="form-error">{errors.demanda_reprimida.message}</span>}
+                    <div className="form-group">
+                      <label className="form-label required">Demanda Reprimida</label>
+                      <input type="number" step="1" className={`form-input ${errors.demanda_reprimida ? 'error' : ''}`} {...register('demanda_reprimida')} />
+                      {errors.demanda_reprimida && <span className="form-error">{errors.demanda_reprimida.message}</span>}
+                    </div>
+                  </div>
                 </div>
-
-              </form>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-              <button form="demanda-form" className="btn btn-primary" disabled={saving}>
-                {saving ? 'Salvando...' : 'Salvar'}
-              </button>
-            </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)} disabled={saving}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? 'Salvando...' : (editRecord ? 'Salvar Registro' : 'Adicionar Registro')}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
