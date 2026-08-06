@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Users, Building2, Stethoscope, ClipboardList,
   UserCheck, BarChart3, ClipboardPlus, LogOut, Moon, Sun, Activity,
-  ChevronRight, ChevronLeft, Settings
+  ChevronRight, ChevronLeft, Settings, TrendingDown
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -29,6 +29,7 @@ const adminNavItems = [
     items: [
       { label: 'Capacidade Potencial', href: '/cadastro/capacidade-potencial', icon: BarChart3 },
       { label: 'Capacidade Instalada', href: '/cadastro/consolidado-profissional', icon: ClipboardPlus },
+      { label: 'Demanda Reprimida', href: '/cadastro/demanda-reprimida', icon: TrendingDown },
     ],
   },
   {

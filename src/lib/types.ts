@@ -82,3 +82,15 @@ export interface ConsolidadoProfissional {
   updated_at: string | null
   updated_by: string | null
 }
+
+export interface DemandaReprimida {
+  id: string
+  procedimento_id: string | null
+  procedimento?: Procedimento | null
+  media_solicitacoes: number
+  demanda_reprimida: number
+  created_at: string
+  created_by: string | null
+  updated_at: string | null
+  updated_by: string | null
+}
