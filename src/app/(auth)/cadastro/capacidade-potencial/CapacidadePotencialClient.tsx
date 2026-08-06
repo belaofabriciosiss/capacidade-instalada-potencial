@@ -103,14 +103,21 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
   useEffect(() => { setPage(1) }, [search, filterEstab, filterTipo])
 
   const isAllPageSelected = paginated.length > 0 && paginated.every(r => selectedIds.has(r.id))
+  const isAllGlobalSelected = sorted.length > 0 && sorted.every(r => selectedIds.has(r.id))
+
   const toggleSelectAll = () => {
-    const next = new Set(selectedIds)
-    if (isAllPageSelected) {
-      paginated.forEach(r => next.delete(r.id))
+    if (isAllGlobalSelected) {
+      // Deselect everything
+      setSelectedIds(new Set())
+    } else if (isAllPageSelected) {
+      // Page already selected → select ALL filtered
+      setSelectedIds(new Set(sorted.map(r => r.id)))
     } else {
+      // Select current page
+      const next = new Set(selectedIds)
       paginated.forEach(r => next.add(r.id))
+      setSelectedIds(next)
     }
-    setSelectedIds(next)
   }
 
   const toggleSelect = (id: string) => {
@@ -360,6 +367,54 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
           {filtered.length} registro{filtered.length !== 1 ? 's' : ''}
         </span>
       </div>
+
+      {/* Select-all global banner */}
+      {isAllPageSelected && !isAllGlobalSelected && sorted.length > PAGE_SIZE && (
+        <div style={{
+          background: 'rgba(99,102,241,.1)',
+          border: '1px solid rgba(99,102,241,.25)',
+          borderRadius: 8,
+          padding: '10px 16px',
+          marginBottom: 12,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          fontSize: '0.8375rem',
+          color: 'var(--text-primary)',
+        }}>
+          <span>Os {paginated.length} registros desta página estão selecionados.</span>
+          <button
+            className="btn btn-sm"
+            style={{ background: 'var(--brand-500)', color: '#fff', padding: '4px 12px' }}
+            onClick={() => setSelectedIds(new Set(sorted.map(r => r.id)))}
+          >
+            Selecionar todos os {sorted.length} registros
+          </button>
+        </div>
+      )}
+      {isAllGlobalSelected && sorted.length > PAGE_SIZE && (
+        <div style={{
+          background: 'rgba(52,211,153,.1)',
+          border: '1px solid rgba(52,211,153,.25)',
+          borderRadius: 8,
+          padding: '10px 16px',
+          marginBottom: 12,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          fontSize: '0.8375rem',
+          color: 'var(--text-primary)',
+        }}>
+          <span>✅ Todos os <strong>{sorted.length}</strong> registros filtrados estão selecionados.</span>
+          <button
+            className="btn btn-sm btn-secondary"
+            style={{ padding: '4px 12px' }}
+            onClick={() => setSelectedIds(new Set())}
+          >
+            Cancelar seleção
+          </button>
+        </div>
+      )}
 
       {/* Table */}
       <div className="card" style={{ overflow: 'hidden' }}>
