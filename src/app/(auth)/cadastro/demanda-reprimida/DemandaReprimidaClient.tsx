@@ -556,7 +556,7 @@ export default function DemandaReprimidaClient({ procedimentos: initProc, initia
         message="Tem certeza que deseja excluir este registro?"
         onConfirm={handleDelete}
         onCancel={() => setDeleteId(null)}
-        isLoading={deleting}
+        loading={deleting}
       />
 
       {/* Confirm Bulk Delete */}
@@ -566,7 +566,7 @@ export default function DemandaReprimidaClient({ procedimentos: initProc, initia
         message={`Tem certeza que deseja excluir os ${selectedIds.size} registros selecionados?`}
         onConfirm={handleBulkDelete}
         onCancel={() => setShowBulkDeleteModal(false)}
-        isLoading={bulkDeleting}
+        loading={bulkDeleting}
       />
     </>
   )
