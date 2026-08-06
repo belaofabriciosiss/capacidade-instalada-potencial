@@ -297,17 +297,16 @@ export default function ConsolidadoProfissionalClient({
 
         const payloads = []
         let skipped = 0
-        for (const row of rows) {
-          // Helper: get first non-empty value from multiple possible column names
-          const getStr = (row: any, ...keys: string[]) => {
-            for (const k of keys) {
-              const v = row[k]
-              if (v !== undefined && v !== null && String(v).trim() !== '') {
-                return String(v).trim()
-              }
+        // Helper: get first non-empty value from multiple possible column names
+        const getStr = (row: any, ...keys: string[]) => {
+          for (const k of keys) {
+            const v = row[k]
+            if (v !== undefined && v !== null && String(v).trim() !== '') {
+              return String(v).trim()
             }
-            return ''
           }
+          return ''
+        }
 
         // 1. Pre-pass: Identificar cadastros faltando
         const missingEstab = new Map<string, string>()
