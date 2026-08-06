@@ -267,10 +267,6 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
         for (const row of rows) {
           const rawEstab = String(row['Estabelecimento'] || '').toLowerCase().trim()
           const estab = estabelecimentos.find(e => e.nome.toLowerCase().trim() === rawEstab)
-          if (!estab) {
-            skipped++
-            continue
-          }
 
           const getNum = (val: unknown, fallback: number) => {
             if (val === undefined || val === null || val === '') return fallback
@@ -279,7 +275,7 @@ export default function CapacidadePotencialClient({ estabelecimentos, initialDat
           }
 
           payloads.push({
-            estabelecimento_id: estab.id,
+            estabelecimento_id: estab ? estab.id : null,
             tipo_sala: String(row['Tipo de Sala'] || 'Consultas'),
             total_salas: getNum(row['Total de Salas'], 0),
             horas_dia: getNum(row['Horas/Dia'], 0),
