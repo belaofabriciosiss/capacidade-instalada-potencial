@@ -291,30 +291,53 @@ export default function ConsolidadoProfissionalClient({
         const payloads = []
         let skipped = 0
         for (const row of rows) {
-          const rawEstab = String(row['Estabelecimento'] || '').toLowerCase().trim()
-          const rawEspec = String(row['Especialidade'] || '').toLowerCase().trim()
-          const rawProf = String(row['Profissional'] || '').toLowerCase().trim()
-
-          const estab = estabelecimentos.find(e => e.nome.toLowerCase().trim() === rawEstab)
-          
-          if (!estab) {
-            skipped++
-            continue
+          // Helper: get first non-empty value from multiple possible column names
+          const getStr = (...keys: string[]) => {
+            for (const k of keys) {
+              const v = row[k]
+              if (v !== undefined && v !== null && String(v).trim() !== '') {
+                return String(v).trim()
+              }
+            }
+            return ''
           }
 
-          const espec = especialidades.find(e => e.nome.toLowerCase().trim() === rawEspec)
-          const prof = profissionais.find(p => p.nome.toLowerCase().trim() === rawProf)
-          
-          const rawProc = String(row['Procedimento'] || '').toLowerCase().trim()
-          const proc = procedimentos.find(p => p.nome.toLowerCase().trim() === rawProc)
-          
+          const rawEstab = getStr('Estabelecimento', 'ESTABELECIMENTO', 'estabelecimento').toLowerCase()
+          const rawEspec = getStr('Especialidade', 'ESPECIALIDADE', 'especialidade', 'Especialidade ').toLowerCase()
+          const rawProf  = getStr('Profissional', 'PROFISSIONAL', 'Nome', 'NOME', 'nome').toLowerCase()
+          const rawProc  = getStr('Procedimento', 'PROCEDIMENTO', 'procedimento', 'PROCEDIMENTO').toLowerCase()
+
+          // Establishment is mandatory — skip only if blank or not found
+          if (!rawEstab) { skipped++; continue }
+          const estab = estabelecimentos.find(e => e.nome.toLowerCase().trim() === rawEstab)
+          if (!estab) { skipped++; continue }
+
+          // Optional lookups — if blank or not found, save null
+          const espec = rawEspec ? especialidades.find(e => e.nome.toLowerCase().trim() === rawEspec) : undefined
+          const prof  = rawProf  ? profissionais.find(p => p.nome.toLowerCase().trim() === rawProf)  : undefined
+          const proc  = rawProc  ? procedimentos.find(p => p.nome.toLowerCase().trim() === rawProc)  : undefined
+
           const getNum = (val: unknown, fallback: number | null) => {
             if (val === undefined || val === null || val === '') return fallback
             const num = Number(val)
             return isNaN(num) ? fallback : num
           }
 
-          const rawTipo = String(row['Tipo'] || '').toLowerCase().trim()
+          // Accept multiple possible column names for numeric fields
+          const chSemanal = getNum(
+            row['CH Semanal'] ?? row['Carga Horária Semanal'] ?? row['Carga Horaria Semanal'] ?? row['CH SEMANAL'] ?? row['Carga Horária Semanal\r\nProfissional'],
+            0
+          )
+          const chAgendamento = getNum(
+            row['CH Agendamento'] ?? row['Carga Horária Agendamento'] ?? row['Carga Horaria Agendamento'] ?? row['CH AGENDAMENTO'],
+            0
+          )
+          const pacHora = getNum(
+            row['Pacientes/Hora'] ?? row['Quantidade Atendimentos Por Hora'] ?? row['Pac/Hora'] ?? row['PAC/HORA'],
+            null
+          )
+
+          const rawTipo = getStr('Tipo', 'TIPO', 'tipo').toLowerCase()
           const tipo = rawTipo.includes('exame') ? 'Exame' : 'Consulta'
 
           payloads.push({
@@ -323,9 +346,9 @@ export default function ConsolidadoProfissionalClient({
             profissional_id: prof?.id || null,
             tipo: tipo,
             procedimento_id: proc?.id || null,
-            carga_horaria_semanal: getNum(row['CH Semanal'], 0),
-            carga_horaria_agendamento: getNum(row['CH Agendamento'], 0),
-            pacientes_hora: getNum(row['Pacientes/Hora'], null),
+            carga_horaria_semanal: chSemanal,
+            carga_horaria_agendamento: chAgendamento,
+            pacientes_hora: pacHora,
           })
         }
 
