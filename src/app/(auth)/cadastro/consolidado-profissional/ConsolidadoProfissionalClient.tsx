@@ -10,7 +10,7 @@ import {
   Estabelecimento, Especialidade, Profissional, Procedimento,
   ConsolidadoProfissional, TipoAtendimento
 } from '@/lib/types'
-import { Plus, Pencil, Trash2, Download, Upload, Calculator, X, Info, CheckSquare } from 'lucide-react'
+import { Plus, Pencil, Trash2, Download, Upload, Calculator, X, Info, CheckSquare, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import SearchBar from '@/components/ui/SearchBar'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import * as XLSX from 'xlsx'
@@ -60,6 +60,18 @@ export default function ConsolidadoProfissionalClient({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
+  const [sortKey, setSortKey] = useState<string>('created_at')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+
+  const handleSort = (key: string) => {
+    if (sortKey === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+    setPage(1)
+  }
 
   const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -89,8 +101,27 @@ export default function ConsolidadoProfissionalClient({
     return true
   })
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const sorted = [...filtered].sort((a, b) => {
+    let aVal: any, bVal: any
+    switch (sortKey) {
+      case 'estabelecimento': aVal = a.estabelecimento?.nome || ''; bVal = b.estabelecimento?.nome || ''; break
+      case 'especialidade': aVal = a.especialidade?.nome || ''; bVal = b.especialidade?.nome || ''; break
+      case 'profissional': aVal = a.profissional?.nome || ''; bVal = b.profissional?.nome || ''; break
+      case 'procedimento': aVal = a.procedimento?.nome || ''; bVal = b.procedimento?.nome || ''; break
+      case 'tipo': aVal = a.tipo; bVal = b.tipo; break
+      case 'carga_horaria_semanal': aVal = a.carga_horaria_semanal; bVal = b.carga_horaria_semanal; break
+      case 'carga_horaria_agendamento': aVal = a.carga_horaria_agendamento; bVal = b.carga_horaria_agendamento; break
+      case 'pacientes_hora': aVal = a.pacientes_hora ?? -1; bVal = b.pacientes_hora ?? -1; break
+      case 'capacidade_instalada': aVal = a.capacidade_instalada; bVal = b.capacidade_instalada; break
+      default: aVal = a.created_at; bVal = b.created_at
+    }
+    if (aVal === bVal) return 0
+    const cmp = aVal < bVal ? -1 : 1
+    return sortDir === 'asc' ? cmp : -cmp
+  })
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
+  const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   useEffect(() => { setPage(1) }, [search, filterEstab, filterTipo, filterEspec])
 
@@ -398,16 +429,31 @@ export default function ConsolidadoProfissionalClient({
                     style={{ cursor: 'pointer' }}
                   />
                 </th>
-                <th>Estabelecimento</th>
-                <th>Especialidade</th>
-                <th>Profissional</th>
-                <th>Procedimento</th>
-                <th>Tipo</th>
-                <th>CH Semanal</th>
-                <th>CH Agendamento</th>
-                <th>Pac./Hora</th>
-                <th>Atend. Semanais</th>
-                <th>Cap. Instalada</th>
+                {([
+                  { key: 'estabelecimento', label: 'Estabelecimento' },
+                  { key: 'especialidade', label: 'Especialidade' },
+                  { key: 'profissional', label: 'Profissional' },
+                  { key: 'procedimento', label: 'Procedimento' },
+                  { key: 'tipo', label: 'Tipo' },
+                  { key: 'carga_horaria_semanal', label: 'CH Semanal' },
+                  { key: 'carga_horaria_agendamento', label: 'CH Agendamento' },
+                  { key: 'pacientes_hora', label: 'Pac./Hora' },
+                  { key: 'atendimentos_semanais', label: 'Atend. Semanais' },
+                  { key: 'capacidade_instalada', label: 'Cap. Instalada' },
+                ] as const).map(({ key, label }) => (
+                  <th
+                    key={key}
+                    onClick={() => handleSort(key)}
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  >
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      {label}
+                      {sortKey === key
+                        ? sortDir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                        : <ArrowUpDown size={11} style={{ opacity: 0.35 }} />}
+                    </span>
+                  </th>
+                ))}
                 <th style={{ width: 80, textAlign: 'center' }}>Ações</th>
               </tr>
             </thead>
