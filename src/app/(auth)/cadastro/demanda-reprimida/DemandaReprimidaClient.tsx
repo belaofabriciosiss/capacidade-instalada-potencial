@@ -495,23 +495,12 @@ export default function DemandaReprimidaClient({ procedimentos: initProc, initia
             <span className="pagination-info">
               Exibindo {Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)}–{Math.min(page * PAGE_SIZE, filtered.length)} de {filtered.length}
             </span>
-            <div className="pagination-controls">
-              <button className="btn-icon" disabled={page === 1} onClick={() => setPage(p => p - 1)} title="Anterior">
-                <ArrowUpDown size={14} style={{ transform: 'rotate(90deg)' }} /> {/* placeholder for left arrow */}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-secondary btn-sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
+                Anterior
               </button>
-              <div className="pagination-pages">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                  <button
-                    key={p}
-                    className={`pagination-page ${page === p ? 'active' : ''}`}
-                    onClick={() => setPage(p)}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-              <button className="btn-icon" disabled={page === totalPages} onClick={() => setPage(p => p + 1)} title="Próxima">
-                <ArrowUpDown size={14} style={{ transform: 'rotate(-90deg)' }} /> {/* placeholder for right arrow */}
+              <button className="btn btn-secondary btn-sm" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>
+                Próxima
               </button>
             </div>
           </div>
